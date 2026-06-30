@@ -11,6 +11,7 @@ public class TrackerSimulator
 
     private readonly SolarPositionService _solarPosition;
     private readonly Random _random = new();
+    private readonly object _lock = new();
 
     private double _azimuth = 180.0;
     private double _elevation = 0.0;
@@ -18,6 +19,7 @@ public class TrackerSimulator
     private double _targetElevation = 0.0;
     private TrackerMode _mode = TrackerMode.Auto;
     private TrackerState _state = TrackerState.Idle;
+    private LdrReadings? _lastLdr;
 
     public TrackerSimulator(SolarPositionService solarPosition)
     {
@@ -28,49 +30,77 @@ public class TrackerSimulator
 
     public void SetMode(TrackerMode mode)
     {
-        _mode = mode;
-
-        if (mode == TrackerMode.Parking)
+        lock (_lock)
         {
-            _targetAzimuth = TrackerLimits.ParkingAzimuth;
-            _targetElevation = TrackerLimits.ParkingElevation;
+            _mode = mode;
+
+            if (mode == TrackerMode.Parking)
+            {
+                _targetAzimuth = TrackerLimits.ParkingAzimuth;
+                _targetElevation = TrackerLimits.ParkingElevation;
+            }
         }
     }
 
     public void SetTarget(double azimuth, double elevation)
     {
-        if (_mode != TrackerMode.Manual) return;
+        lock (_lock)
+        {
+            if (_mode != TrackerMode.Manual) return;
 
-        _targetAzimuth = Math.Clamp(azimuth, TrackerLimits.MinAzimuth, TrackerLimits.MaxAzimuth);
-        _targetElevation = Math.Clamp(elevation, TrackerLimits.MinElevation, TrackerLimits.MaxElevation);
+            _targetAzimuth = Math.Clamp(azimuth, TrackerLimits.MinAzimuth, TrackerLimits.MaxAzimuth);
+            _targetElevation = Math.Clamp(elevation, TrackerLimits.MinElevation, TrackerLimits.MaxElevation);
+        }
+    }
+
+    public void UpdateLdr(LdrReadings ldr)
+    {
+        lock (_lock)
+        {
+            _lastLdr = ldr;
+        }
     }
 
     public void Tick(double deltaSeconds)
     {
-        if (_mode == TrackerMode.Auto)
+        lock (_lock)
         {
-            var (az, el) = _solarPosition.Calculate(DateTime.UtcNow);
-            _targetAzimuth = az;
-            _targetElevation = el;
-        }
+            if (_mode == TrackerMode.Auto)
+            {
+                var (az, el) = _solarPosition.Calculate(DateTime.UtcNow);
+                _targetAzimuth = az;
+                _targetElevation = el;
 
-        MoveTowardsTarget(deltaSeconds);
-        UpdateState();
+                if (_lastLdr != null)
+                {
+                    var azCorrection = (_lastLdr.Ne + _lastLdr.Se - _lastLdr.Nw - _lastLdr.Sw) / 1023.0 * 5.0;
+                    var elCorrection = (_lastLdr.Nw + _lastLdr.Ne - _lastLdr.Sw - _lastLdr.Se) / 1023.0 * 5.0;
+                    _targetAzimuth = Math.Clamp(_targetAzimuth + azCorrection, TrackerLimits.MinAzimuth, TrackerLimits.MaxAzimuth);
+                    _targetElevation = Math.Clamp(_targetElevation + elCorrection, TrackerLimits.MinElevation, TrackerLimits.MaxElevation);
+                }
+            }
+
+            MoveTowardsTarget(deltaSeconds);
+            UpdateState();
+        }
     }
 
     public TrackerStatus GetStatus()
     {
-        var noise = _random.NextDouble() * NoiseAmplitude - NoiseAmplitude / 2;
+        lock (_lock)
+        {
+            var noise = _random.NextDouble() * NoiseAmplitude - NoiseAmplitude / 2;
 
-        return new TrackerStatus(
-            DateTime.UtcNow,
-            Math.Round(_azimuth + noise, 1),
-            Math.Round(Math.Max(0, _elevation + noise), 1),
-            Math.Round(_targetAzimuth, 1),
-            Math.Round(_targetElevation, 1),
-            _mode,
-            _state
-        );
+            return new TrackerStatus(
+                DateTime.UtcNow,
+                Math.Round(_azimuth + noise, 1),
+                Math.Round(Math.Max(0, _elevation + noise), 1),
+                Math.Round(_targetAzimuth, 1),
+                Math.Round(_targetElevation, 1),
+                _mode,
+                _state
+            );
+        }
     }
 
     private void MoveTowardsTarget(double deltaSeconds)

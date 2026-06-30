@@ -57,6 +57,7 @@ public class Worker(
             {
                 latestSensors = sensors.Generate(status.Elevation);
                 await mqtt.PublishSensorsAsync(latestSensors, stoppingToken);
+                tracker.UpdateLdr(latestSensors.Ldr);
 
                 latestUps = ups.Generate(latestSensors.Power);
                 await mqtt.PublishUpsAsync(latestUps, stoppingToken);
@@ -73,5 +74,13 @@ public class Worker(
 
             await Task.Delay(100, stoppingToken);
         }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await mqtt.DisconnectAsync();
+        logger.LogInformation("MockController stopping");
+
+        await base.StopAsync(cancellationToken);
     }
 }

@@ -5,6 +5,8 @@ namespace SolarTracker.MockController.Services;
 
 public class UpsSimulator
 {
+    private readonly Random _random = new();
+
     private double _batteryLevel = 100.0;
     private PowerSource _powerSource = PowerSource.Panel;
 
@@ -31,7 +33,7 @@ public class UpsSimulator
         };
 
         var inverterOutput = _powerSource != PowerSource.None
-            ? 150.0 + new Random().NextDouble() * 50
+            ? 150.0 + _random.NextDouble() * 50
             : 0;
 
         return new UpsStatus(

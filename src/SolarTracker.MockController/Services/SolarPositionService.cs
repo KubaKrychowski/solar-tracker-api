@@ -2,8 +2,14 @@ namespace SolarTracker.MockController.Services;
 
 public class SolarPositionService
 {
-    private const double Latitude = 51.1;
-    private const double Longitude = 17.0;
+    private readonly double _latitude;
+    private readonly double _longitude;
+
+    public SolarPositionService(IConfiguration configuration)
+    {
+        _latitude = configuration.GetValue<double>("Location:Latitude", 51.1);
+        _longitude = configuration.GetValue<double>("Location:Longitude", 17.0);
+    }
 
     public (double Azimuth, double Elevation) Calculate(DateTime utcNow)
     {
@@ -11,9 +17,9 @@ public class SolarPositionService
         var hour = utcNow.Hour + utcNow.Minute / 60.0;
 
         var declination = 23.45 * Math.Sin(Math.PI / 180.0 * 360.0 / 365.0 * (dayOfYear - 81));
-        var hourAngle = 15.0 * (hour - 12.0) + Longitude;
+        var hourAngle = 15.0 * (hour - 12.0) + _longitude;
 
-        var latRad = Latitude * Math.PI / 180.0;
+        var latRad = _latitude * Math.PI / 180.0;
         var decRad = declination * Math.PI / 180.0;
         var haRad = hourAngle * Math.PI / 180.0;
 
