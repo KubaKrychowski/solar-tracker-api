@@ -2,6 +2,6 @@ namespace SolarTracker.Shared.Enums;
 
 public enum AlarmSeverity
 {
-    Warning,
-    Critical
+    Warning = 1,
+    Critical = 2
 }

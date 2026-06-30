@@ -2,7 +2,7 @@ namespace SolarTracker.Shared.Enums;
 
 public enum AtsStatus
 {
-    Normal,
-    SwitchedToUps,
-    Fault
+    Normal = 1,
+    SwitchedToUps = 2,
+    Fault = 3
 }

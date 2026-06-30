@@ -2,7 +2,7 @@ namespace SolarTracker.Shared.Enums;
 
 public enum TrackerMode
 {
-    Auto,
-    Manual,
-    Parking
+    Auto = 1,
+    Manual = 2,
+    Parking = 3
 }
