@@ -1,0 +1,42 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -W 3 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: solartracker
+      POSTGRES_USER: solartracker
+      POSTGRES_PASSWORD: solartracker_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solartracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  mock-controller:
+    build:
+      context: .
+      dockerfile: src/SolarTracker.MockController/Dockerfile
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    environment:
+      - Mqtt__Host=mosquitto
+      - Mqtt__Port=1883
+
+volumes:
+  postgres_data:

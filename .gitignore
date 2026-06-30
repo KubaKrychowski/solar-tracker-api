@@ -1,0 +1,26 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.vs/
+.vscode/
+*.DotSettings.user
+
+## IDE
+.idea/
+*.swp
+
+## Docker
+docker-compose.override.yml
+
+## Environment
+.env
+appsettings.*.local.json
+
+## OS
+Thumbs.db
+desktop.ini
+.DS_Store
