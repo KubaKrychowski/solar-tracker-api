@@ -1,15 +1,9 @@
 namespace SolarTracker.MockController.Services;
 
-public class SolarPositionService
+public class SolarPositionService(IConfiguration configuration)
 {
-    private readonly double _latitude;
-    private readonly double _longitude;
-
-    public SolarPositionService(IConfiguration configuration)
-    {
-        _latitude = configuration.GetValue<double>("Location:Latitude", 51.1);
-        _longitude = configuration.GetValue<double>("Location:Longitude", 17.0);
-    }
+    private readonly double _latitude = configuration.GetValue<double>("Location:Latitude", 51.1);
+    private readonly double _longitude = configuration.GetValue<double>("Location:Longitude", 17.0);
 
     public (double Azimuth, double Elevation) Calculate(DateTime utcNow)
     {

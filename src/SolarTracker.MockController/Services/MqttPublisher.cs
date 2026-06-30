@@ -8,11 +8,11 @@ using SolarTracker.Shared.Models;
 
 namespace SolarTracker.MockController.Services;
 
-public class MqttPublisher : IAsyncDisposable
+public class MqttPublisher(
+    TrackerSimulator tracker,
+    ILogger<MqttPublisher> logger) : IAsyncDisposable
 {
-    private readonly IMqttClient _client;
-    private readonly TrackerSimulator _tracker;
-    private readonly ILogger<MqttPublisher> _logger;
+    private readonly IMqttClient _client = new MqttFactory().CreateMqttClient();
 
     private string _host = "localhost";
     private int _port = 1883;
@@ -23,15 +23,6 @@ public class MqttPublisher : IAsyncDisposable
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
-
-    public MqttPublisher(
-        TrackerSimulator tracker,
-        ILogger<MqttPublisher> logger)
-    {
-        _client = new MqttFactory().CreateMqttClient();
-        _tracker = tracker;
-        _logger = logger;
-    }
 
     public async Task ConnectAsync(string host, int port, CancellationToken ct)
     {
@@ -63,7 +54,7 @@ public class MqttPublisher : IAsyncDisposable
             .Build();
         await _client.SubscribeAsync(subscribeOptions, ct);
 
-        _logger.LogInformation("Connected to MQTT broker {Host}:{Port}", host, port);
+        logger.LogInformation("Connected to MQTT broker {Host}:{Port}", host, port);
     }
 
     public async Task DisconnectAsync()
@@ -87,7 +78,7 @@ public class MqttPublisher : IAsyncDisposable
 
         while (!_ct.IsCancellationRequested && !_client.IsConnected)
         {
-            _logger.LogWarning("MQTT connection lost, reconnecting in {Delay}s", delay.TotalSeconds);
+            logger.LogWarning("MQTT connection lost, reconnecting in {Delay}s", delay.TotalSeconds);
 
             try
             {
@@ -112,7 +103,7 @@ public class MqttPublisher : IAsyncDisposable
                     .Build();
                 await _client.SubscribeAsync(subscribeOptions, _ct);
 
-                _logger.LogInformation("Reconnected to MQTT broker {Host}:{Port}", _host, _port);
+                logger.LogInformation("Reconnected to MQTT broker {Host}:{Port}", _host, _port);
             }
             catch (OperationCanceledException)
             {
@@ -120,7 +111,7 @@ public class MqttPublisher : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "MQTT reconnect attempt failed");
+                logger.LogWarning(ex, "MQTT reconnect attempt failed");
                 delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 2, maxDelay.TotalSeconds));
             }
         }
@@ -159,8 +150,8 @@ public class MqttPublisher : IAsyncDisposable
             var cmd = JsonSerializer.Deserialize<MoveCommand>(payload, JsonOptions);
             if (cmd != null)
             {
-                _tracker.SetTarget(cmd.Azimuth, cmd.Elevation);
-                _logger.LogInformation("Move command: az={Az} el={El}", cmd.Azimuth, cmd.Elevation);
+                tracker.SetTarget(cmd.Azimuth, cmd.Elevation);
+                logger.LogInformation("Move command: az={Az} el={El}", cmd.Azimuth, cmd.Elevation);
             }
         }
         else if (topic == MqttTopics.CommandMode)
@@ -168,8 +159,8 @@ public class MqttPublisher : IAsyncDisposable
             var cmd = JsonSerializer.Deserialize<ModeCommand>(payload, JsonOptions);
             if (cmd != null)
             {
-                _tracker.SetMode(cmd.Mode);
-                _logger.LogInformation("Mode command: {Mode}", cmd.Mode);
+                tracker.SetMode(cmd.Mode);
+                logger.LogInformation("Mode command: {Mode}", cmd.Mode);
             }
         }
 

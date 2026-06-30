@@ -4,12 +4,11 @@ using SolarTracker.Shared.Models;
 
 namespace SolarTracker.MockController.Services;
 
-public class TrackerSimulator
+public class TrackerSimulator(SolarPositionService solarPosition)
 {
     private const double ServoSpeed = 2.0;
     private const double NoiseAmplitude = 0.5;
 
-    private readonly SolarPositionService _solarPosition;
     private readonly Random _random = new();
     private readonly object _lock = new();
 
@@ -20,11 +19,6 @@ public class TrackerSimulator
     private TrackerMode _mode = TrackerMode.Auto;
     private TrackerState _state = TrackerState.Idle;
     private LdrReadings? _lastLdr;
-
-    public TrackerSimulator(SolarPositionService solarPosition)
-    {
-        _solarPosition = solarPosition;
-    }
 
     public TrackerMode Mode => _mode;
 
@@ -67,7 +61,7 @@ public class TrackerSimulator
         {
             if (_mode == TrackerMode.Auto)
             {
-                var (az, el) = _solarPosition.Calculate(DateTime.UtcNow);
+                var (az, el) = solarPosition.Calculate(DateTime.UtcNow);
                 _targetAzimuth = az;
                 _targetElevation = el;
 
