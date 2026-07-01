@@ -1,3 +1,38 @@
+# Implementacja — feat/power (Power Monitoring Vertical Slice)
+
+Data: 2026-07-01
+
+## Status
+`dotnet build SolarTracker.sln` → **Build succeeded, 0 Warning(s), 0 Error(s)**
+
+## Nowe pliki
+
+| Plik | Opis |
+|------|------|
+| `src/SolarTracker.Api/Features/Power/GetPowerStatus.cs` | `GET /api/power/status` — aktualny stan zasilania z TrackerStateService |
+| `src/SolarTracker.Api/Features/Power/GetPowerHistory.cs` | `GET /api/power/history?from=&to=` — historia zasilania z TelemetrySnapshot |
+
+## Zmodyfikowane pliki
+
+| Plik | Zmiana |
+|------|--------|
+| `src/SolarTracker.Api/Routes.cs` | Dodano `Power = "/api/power"` |
+| `src/SolarTracker.Api/Program.cs` | Dodano `using SolarTracker.Api.Features.Power`, wiring `MapGroup(Routes.Power)` z `GetPowerStatus.Map` i `GetPowerHistory.Map` |
+
+## Endpointy
+
+- `GET /api/power/status` — zwraca `{ power, voltage, current, batteryLevel, powerSource, atsStatus, inverterOutputW }` z `CurrentUps` + `CurrentSensors`; 404 gdy dane nie dostępne
+- `GET /api/power/history?from=&to=` — historia z `TelemetrySnapshot`, default ostatnie 24h, limit 1000, projekcja na 8 pól zasilania
+
+## Kluczowe decyzje
+
+- `voltage` i `current` pobierane z `SensorData` (a nie `UpsStatus`, które ich nie zawiera)
+- `TimeProvider.GetUtcNow()` zamiast `DateTime.UtcNow`
+- `db.Set<TelemetrySnapshot>()` zamiast named DbSet property
+- Projekcja EF Core na anonimowy obiekt (nie zwraca całej encji)
+
+---
+
 # Implementacja: Vertical Slice Telemetrii — feat/telemetry
 
 Data: 2026-07-01
