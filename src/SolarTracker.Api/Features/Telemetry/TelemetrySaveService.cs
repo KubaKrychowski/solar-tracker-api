@@ -8,7 +8,8 @@ namespace SolarTracker.Api.Features.Telemetry;
 public class TelemetrySaveService(
     IServiceScopeFactory scopeFactory,
     TrackerStateService stateService,
-    IHubContext<TelemetryHub> hubContext) : BackgroundService
+    IHubContext<TelemetryHub> hubContext,
+    TimeProvider timeProvider) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -26,7 +27,7 @@ public class TelemetrySaveService(
 
             var snapshot = new TelemetrySnapshot
             {
-                Timestamp = DateTime.UtcNow,
+                Timestamp = timeProvider.GetUtcNow().UtcDateTime,
                 Azimuth = status.Azimuth,
                 Elevation = status.Elevation,
                 TargetAzimuth = status.TargetAzimuth,

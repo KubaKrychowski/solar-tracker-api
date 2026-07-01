@@ -10,7 +10,7 @@ public static class GetLatest
 
     private static async Task<IResult> Handle(SolarTrackerDbContext db)
     {
-        var snapshot = await db.Telemetry
+        var snapshot = await db.Set<TelemetrySnapshot>()
             .OrderByDescending(t => t.Timestamp)
             .FirstOrDefaultAsync();
 

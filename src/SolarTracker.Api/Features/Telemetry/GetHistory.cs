@@ -10,14 +10,15 @@ public static class GetHistory
 
     private static async Task<IResult> Handle(
         SolarTrackerDbContext db,
+        TimeProvider timeProvider,
         DateTime? from,
         DateTime? to,
         int? interval)
     {
-        var end = to ?? DateTime.UtcNow;
+        var end = to ?? timeProvider.GetUtcNow().UtcDateTime;
         var start = from ?? end.AddHours(-24);
 
-        var query = db.Telemetry
+        var query = db.Set<TelemetrySnapshot>()
             .Where(t => t.Timestamp >= start && t.Timestamp <= end)
             .OrderBy(t => t.Timestamp);
 

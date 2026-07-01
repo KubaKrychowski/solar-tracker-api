@@ -21,6 +21,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<MqttService>());
 builder.Services.AddDbContext<SolarTrackerDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<TelemetrySaveService>();
 
 var app = builder.Build();
