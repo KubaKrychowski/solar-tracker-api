@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Protocol;
+using SolarTracker.Api.Features.Alarms;
 using SolarTracker.Shared.Constants;
 using SolarTracker.Shared.Models;
 
@@ -12,6 +13,8 @@ namespace SolarTracker.Api.Features.Tracker;
 public class MqttService(
     TrackerStateService state,
     IHubContext<TrackerHub> hub,
+    AlarmStateService alarmState,
+    IHubContext<AlarmHub> alarmHub,
     IConfiguration configuration,
     ILogger<MqttService> logger) : BackgroundService
 {
@@ -45,6 +48,7 @@ public class MqttService(
 
             var subscribeOptions = new MqttFactory().CreateSubscribeOptionsBuilder()
                 .WithTopicFilter(MqttTopics.TelemetryAll)
+                .WithTopicFilter(MqttTopics.Alarm)
                 .Build();
             await _client.SubscribeAsync(subscribeOptions, ct);
 
@@ -78,6 +82,7 @@ public class MqttService(
 
                 var subscribeOptions = new MqttFactory().CreateSubscribeOptionsBuilder()
                     .WithTopicFilter(MqttTopics.TelemetryAll)
+                    .WithTopicFilter(MqttTopics.Alarm)
                     .Build();
                 await _client.SubscribeAsync(subscribeOptions, ct);
 
@@ -136,6 +141,16 @@ public class MqttService(
                 {
                     state.UpdateUps(ups);
                     _ = hub.Clients.All.SendAsync("OnUpsUpdate", ups);
+                }
+            }
+            else if (topic == MqttTopics.Alarm)
+            {
+                var alarm = JsonSerializer.Deserialize<AlarmEvent>(payload, JsonOptions);
+                if (alarm != null)
+                {
+                    alarmState.AddOrResolve(alarm);
+                    var method = alarm.Resolved ? "OnAlarmResolved" : "OnAlarmRaised";
+                    _ = alarmHub.Clients.All.SendAsync(method, alarm);
                 }
             }
         }

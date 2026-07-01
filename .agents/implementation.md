@@ -1,3 +1,42 @@
+# Implementacja — feat/alarms (Alarm System Vertical Slice)
+
+Data: 2026-07-01
+
+## Status
+`dotnet build SolarTracker.sln` → **Build succeeded, 0 Warning(s), 0 Error(s)**
+
+## Nowe pliki
+
+| Plik | Opis |
+|------|------|
+| `src/SolarTracker.Api/Features/Alarms/AlarmStateService.cs` | Singleton, in-memory lista aktywnych alarmów i historia (maks. 100), thread-safe (lock pattern) |
+| `src/SolarTracker.Api/Features/Alarms/AlarmHub.cs` | SignalR Hub — klienci subscribują `OnAlarmRaised`, `OnAlarmResolved` na `/hubs/alarms` |
+| `src/SolarTracker.Api/Features/Alarms/GetActiveAlarms.cs` | `GET /api/alarms/active` — zwraca aktywne alarmy, zawsze 200 |
+| `src/SolarTracker.Api/Features/Alarms/GetAlarmHistory.cs` | `GET /api/alarms/history` — zwraca historię alarmów, zawsze 200 |
+
+## Zmodyfikowane pliki
+
+| Plik | Zmiana |
+|------|--------|
+| `src/SolarTracker.Api/Routes.cs` | Dodano `Alarms = "/api/alarms"`, `AlarmsHub = "/hubs/alarms"` |
+| `src/SolarTracker.Api/Program.cs` | Dodano `using SolarTracker.Api.Features.Alarms`, `AddSingleton<AlarmStateService>`, `MapHub<AlarmHub>`, `MapGroup(Routes.Alarms)` z `GetActiveAlarms.Map` i `GetAlarmHistory.Map` |
+| `src/SolarTracker.Api/Features/Tracker/MqttService.cs` | Dodano `AlarmStateService alarmState` i `IHubContext<AlarmHub> alarmHub` do primary constructor; subskrybuje `MqttTopics.Alarm`; obsługuje topic Alarm — `AddOrResolve`, SignalR push `OnAlarmRaised`/`OnAlarmResolved` |
+
+## Endpointy
+
+- `GET /api/alarms/active` — lista aktywnych (nierozwiązanych) alarmów
+- `GET /api/alarms/history` — ostatnie 100 alarmów (FIFO)
+- `WS /hubs/alarms` — SignalR, emituje `OnAlarmRaised` i `OnAlarmResolved`
+
+## Kluczowe decyzje
+
+- `AddOrResolve` w `AlarmStateService` — jeden punkt wejścia z MQTT: jeśli `Resolved=true` → `ResolveAlarm` (przenosi do historii); jeśli `Resolved=false` → `AddAlarm` (zastępuje istniejący alarm tego samego typu)
+- Historia ograniczona do 100 wpisów (FIFO, usuwanie z indeksu 0)
+- Alarm topic (`solar-tracker/alarm`) subskrybowany obok `solar-tracker/telemetry/#` w obu miejscach (ConnectAsync + OnDisconnected reconnect)
+- Primary constructor w MqttService rozszerzony o dwa parametry bez zmiany istniejącej logiki
+
+---
+
 # Implementacja — feat/power (Power Monitoring Vertical Slice)
 
 Data: 2026-07-01
