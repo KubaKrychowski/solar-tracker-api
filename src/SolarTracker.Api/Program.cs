@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using SolarTracker.Api;
 using SolarTracker.Api.Data;
+using SolarTracker.Api.Features.Alarms;
 using SolarTracker.Api.Features.Power;
 using SolarTracker.Api.Features.Telemetry;
 using SolarTracker.Api.Features.Tracker;
@@ -16,6 +17,7 @@ builder.Services.ConfigureHttpJsonOptions(opts =>
 
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<TrackerStateService>();
+builder.Services.AddSingleton<AlarmStateService>();
 builder.Services.AddSingleton<MqttService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MqttService>());
 
@@ -30,6 +32,7 @@ var app = builder.Build();
 app.MapGet("/health", () => Results.Ok("healthy"));
 app.MapHub<TrackerHub>(Routes.TrackerHub);
 app.MapHub<TelemetryHub>(Routes.TelemetryHub);
+app.MapHub<AlarmHub>(Routes.AlarmsHub);
 
 var tracker = app.MapGroup(Routes.Tracker);
 GetStatus.Map(tracker);
@@ -42,5 +45,9 @@ GetHistory.Map(telemetry);
 var power = app.MapGroup(Routes.Power);
 GetPowerStatus.Map(power);
 GetPowerHistory.Map(power);
+
+var alarms = app.MapGroup(Routes.Alarms);
+GetActiveAlarms.Map(alarms);
+GetAlarmHistory.Map(alarms);
 
 app.Run();
