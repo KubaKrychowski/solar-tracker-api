@@ -1,0 +1,137 @@
+using SolarTracker.Shared.Constants;
+using SolarTracker.Shared.Enums;
+using SolarTracker.Shared.Models;
+
+namespace SolarTracker.MockController.Services;
+
+public class TrackerSimulator(SolarPositionService solarPosition)
+{
+    private const double ServoSpeed = 2.0;
+    private const double NoiseAmplitude = 0.5;
+
+    private readonly Random _random = new();
+    private readonly object _lock = new();
+
+    private double _azimuth = 180.0;
+    private double _elevation = 0.0;
+    private double _targetAzimuth = 180.0;
+    private double _targetElevation = 0.0;
+    private TrackerMode _mode = TrackerMode.Auto;
+    private TrackerState _state = TrackerState.Idle;
+    private LdrReadings? _lastLdr;
+
+    public TrackerMode Mode => _mode;
+
+    public void SetMode(TrackerMode mode)
+    {
+        lock (_lock)
+        {
+            _mode = mode;
+
+            if (mode == TrackerMode.Parking)
+            {
+                _targetAzimuth = TrackerLimits.ParkingAzimuth;
+                _targetElevation = TrackerLimits.ParkingElevation;
+            }
+        }
+    }
+
+    public void SetTarget(double azimuth, double elevation)
+    {
+        lock (_lock)
+        {
+            if (_mode != TrackerMode.Manual) return;
+
+            _targetAzimuth = Math.Clamp(azimuth, TrackerLimits.MinAzimuth, TrackerLimits.MaxAzimuth);
+            _targetElevation = Math.Clamp(elevation, TrackerLimits.MinElevation, TrackerLimits.MaxElevation);
+        }
+    }
+
+    public void UpdateLdr(LdrReadings ldr)
+    {
+        lock (_lock)
+        {
+            _lastLdr = ldr;
+        }
+    }
+
+    public void Tick(double deltaSeconds)
+    {
+        lock (_lock)
+        {
+            if (_mode == TrackerMode.Auto)
+            {
+                var (az, el) = solarPosition.Calculate(DateTime.UtcNow);
+                _targetAzimuth = az;
+                _targetElevation = el;
+
+                if (_lastLdr != null)
+                {
+                    var azCorrection = (_lastLdr.Ne + _lastLdr.Se - _lastLdr.Nw - _lastLdr.Sw) / 1023.0 * 5.0;
+                    var elCorrection = (_lastLdr.Nw + _lastLdr.Ne - _lastLdr.Sw - _lastLdr.Se) / 1023.0 * 5.0;
+                    _targetAzimuth = Math.Clamp(_targetAzimuth + azCorrection, TrackerLimits.MinAzimuth, TrackerLimits.MaxAzimuth);
+                    _targetElevation = Math.Clamp(_targetElevation + elCorrection, TrackerLimits.MinElevation, TrackerLimits.MaxElevation);
+                }
+            }
+
+            MoveTowardsTarget(deltaSeconds);
+            UpdateState();
+        }
+    }
+
+    public TrackerStatus GetStatus()
+    {
+        lock (_lock)
+        {
+            var noise = _random.NextDouble() * NoiseAmplitude - NoiseAmplitude / 2;
+
+            return new TrackerStatus(
+                DateTime.UtcNow,
+                Math.Round(_azimuth + noise, 1),
+                Math.Round(Math.Max(0, _elevation + noise), 1),
+                Math.Round(_targetAzimuth, 1),
+                Math.Round(_targetElevation, 1),
+                _mode,
+                _state
+            );
+        }
+    }
+
+    private void MoveTowardsTarget(double deltaSeconds)
+    {
+        var maxStep = ServoSpeed * deltaSeconds;
+
+        _azimuth = MoveAxis(_azimuth, _targetAzimuth, maxStep);
+        _elevation = MoveAxis(_elevation, _targetElevation, maxStep);
+    }
+
+    private static double MoveAxis(double current, double target, double maxStep)
+    {
+        var diff = target - current;
+        if (Math.Abs(diff) < 0.1) return current;
+
+        var step = Math.Sign(diff) * Math.Min(Math.Abs(diff), maxStep);
+        return current + step;
+    }
+
+    private void UpdateState()
+    {
+        if (_mode == TrackerMode.Parking)
+        {
+            _state = IsAtTarget() ? TrackerState.Parked : TrackerState.Moving;
+            return;
+        }
+
+        if (!IsAtTarget())
+        {
+            _state = TrackerState.Moving;
+            return;
+        }
+
+        _state = _mode == TrackerMode.Auto ? TrackerState.Tracking : TrackerState.Idle;
+    }
+
+    private bool IsAtTarget() =>
+        Math.Abs(_azimuth - _targetAzimuth) < 0.5
+        && Math.Abs(_elevation - _targetElevation) < 0.5;
+}
