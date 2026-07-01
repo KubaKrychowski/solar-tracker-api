@@ -1,3 +1,49 @@
+# Implementacja: Vertical Slice Telemetrii — feat/telemetry
+
+Data: 2026-07-01
+
+## Status
+`dotnet build SolarTracker.sln` → **Build succeeded, 0 Warning(s), 0 Error(s)**
+Migracja: **InitialCreate** — wygenerowana pomyślnie (`src/SolarTracker.Api/Migrations/`)
+
+## NuGet packages (wersje 9.x, kompatybilne z net9.0)
+- `Microsoft.EntityFrameworkCore` 9.0.6
+- `Npgsql.EntityFrameworkCore.PostgreSQL` 9.0.4
+- `Microsoft.EntityFrameworkCore.Design` 9.0.6
+
+## Nowe pliki
+
+| Plik | Opis |
+|------|------|
+| `src/SolarTracker.Api/Data/TelemetrySnapshot.cs` | Encja EF Core z polami tracker/sensor/wind/ups |
+| `src/SolarTracker.Api/Data/SolarTrackerDbContext.cs` | DbContext z `DbSet<TelemetrySnapshot>`, connection string z IConfiguration |
+| `src/SolarTracker.Api/Features/Telemetry/TelemetryHub.cs` | SignalR Hub — klienci łączą na `/hubs/telemetry` |
+| `src/SolarTracker.Api/Features/Telemetry/GetLatest.cs` | `GET /api/telemetry/latest` → 200 z ostatnim snapshotem lub 404 |
+| `src/SolarTracker.Api/Features/Telemetry/GetHistory.cs` | `GET /api/telemetry/history?from=&to=&interval=` — historia z zakresu dat, downsampling, limit 1000 |
+| `src/SolarTracker.Api/Features/Telemetry/TelemetrySaveService.cs` | BackgroundService — zapis co 10s + SignalR push `TelemetryUpdate` |
+| `src/SolarTracker.Api/Migrations/20260701160814_InitialCreate.cs` | Migracja PostgreSQL — tabela `Telemetry` |
+
+## Zmodyfikowane pliki
+
+| Plik | Zmiana |
+|------|--------|
+| `src/SolarTracker.Api/Routes.cs` | Dodano `Telemetry = "/api/telemetry"`, `TelemetryHub = "/hubs/telemetry"` |
+| `src/SolarTracker.Api/Program.cs` | AddDbContext, AddHostedService TelemetrySaveService, MapHub TelemetryHub, MapGroup telemetry |
+| `src/SolarTracker.Api/appsettings.json` | Dodano `ConnectionStrings.DefaultConnection` |
+
+## Endpointy
+- `GET /api/telemetry/latest` — ostatni snapshot z bazy
+- `GET /api/telemetry/history?from=&to=&interval=` — historia (domyślnie ostatnie 24h), opcjonalny downsampling co interval minut, limit 1000
+- `WS /hubs/telemetry` — SignalR, emituje `TelemetryUpdate` co 1 minutę
+
+## Uwagi
+- EF tools 9.0.1 vs runtime 9.0.6 — ostrzeżenie, migracja wygenerowana poprawnie
+- `TelemetrySaveService` pomija zapis gdy którykolwiek sensor jeszcze nie przyszedł (null check)
+- Downsampling w GetHistory: GroupBy na bucket czasowy, in-memory (prostota przy limicie 1000 rekordów)
+- Enumeracje zaczynają się od 1 — zgodne z konwencją projektu
+
+---
+
 # Implementacja — feat/tracker-endpoints
 
 Data: 2026-07-01
