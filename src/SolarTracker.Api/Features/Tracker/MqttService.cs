@@ -27,7 +27,6 @@ public class MqttService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-
         _client.ApplicationMessageReceivedAsync += OnMessageReceived;
         _client.DisconnectedAsync += async args => await OnDisconnected(args, stoppingToken);
 
@@ -45,7 +44,7 @@ public class MqttService(
             await _client.ConnectAsync(options, ct);
 
             var subscribeOptions = new MqttFactory().CreateSubscribeOptionsBuilder()
-                .WithTopicFilter("solar-tracker/telemetry/#")
+                .WithTopicFilter(MqttTopics.TelemetryAll)
                 .Build();
             await _client.SubscribeAsync(subscribeOptions, ct);
 
@@ -78,7 +77,7 @@ public class MqttService(
                 await _client.ConnectAsync(BuildOptions(), ct);
 
                 var subscribeOptions = new MqttFactory().CreateSubscribeOptionsBuilder()
-                    .WithTopicFilter("solar-tracker/telemetry/#")
+                    .WithTopicFilter(MqttTopics.TelemetryAll)
                     .Build();
                 await _client.SubscribeAsync(subscribeOptions, ct);
 

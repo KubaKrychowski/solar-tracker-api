@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using SolarTracker.Api;
 using SolarTracker.Api.Features.Tracker;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,9 +18,9 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<MqttService>());
 var app = builder.Build();
 
 app.MapGet("/health", () => Results.Ok("healthy"));
-app.MapHub<TrackerHub>("/hubs/tracker");
+app.MapHub<TrackerHub>(Routes.TrackerHub);
 
-var tracker = app.MapGroup("/api/tracker");
+var tracker = app.MapGroup(Routes.Tracker);
 GetStatus.Map(tracker);
 SendCommand.Map(tracker);
 

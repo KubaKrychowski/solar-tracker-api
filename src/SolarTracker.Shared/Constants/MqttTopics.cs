@@ -10,4 +10,5 @@ public static class MqttTopics
     public const string CommandMove = "solar-tracker/command/move";
     public const string CommandMode = "solar-tracker/command/mode";
     public const string StatusConnection = "solar-tracker/status/connection";
+    public const string TelemetryAll = "solar-tracker/telemetry/#";
 }
