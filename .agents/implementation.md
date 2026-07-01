@@ -1,3 +1,35 @@
+# Implementacja — chore/retention-polish
+
+Data: 2026-07-01
+
+## Status
+`dotnet build SolarTracker.sln` → **Build succeeded, 0 Warning(s), 0 Error(s)**
+
+## Nowe pliki
+
+| Plik | Opis |
+|------|------|
+| `src/SolarTracker.Api/Features/Telemetry/RetentionCleanupService.cs` | BackgroundService — co 1h usuwa `TelemetrySnapshot` starsze niż `Retention:Days` (domyślnie 30 dni); primary constructor z `IServiceScopeFactory`, `TimeProvider`, `IConfiguration`, `ILogger`; używa `db.Set<TelemetrySnapshot>()` i `timeProvider.GetUtcNow()` |
+
+## Zmodyfikowane pliki
+
+| Plik | Zmiana |
+|------|--------|
+| `src/SolarTracker.Api/Program.cs` | Dodano `AddHostedService<RetentionCleanupService>()`, health checks `AddHealthChecks().AddNpgSql(connectionString)` + `app.MapHealthChecks("/health")`, CORS `AddCors()` + `app.UseCors(...)` z `AllowCredentials()` dla SignalR; CORS middleware przed MapHub/MapGroup; origins z `Cors:AllowedOrigins` |
+| `src/SolarTracker.Api/appsettings.json` | Dodano sekcję `Retention: { Days: 30 }` i `Cors: { AllowedOrigins: ["http://localhost:4200"] }` |
+| `src/SolarTracker.Api/SolarTracker.Api.csproj` | Dodano `AspNetCore.HealthChecks.NpgSql 9.0.0` |
+
+## NuGet
+- `AspNetCore.HealthChecks.NpgSql 9.0.0` — health check dla PostgreSQL przez Npgsql
+
+## Kluczowe decyzje
+- CORS origins pobierane z `IConfiguration` (`Cors:AllowedOrigins`), fallback do `http://localhost:4200`
+- `AllowCredentials()` wymagane dla SignalR WebSocket
+- `RetentionCleanupService` czyta `Retention:Days` w każdym ticku (dynamiczne zmiany konfiguracji)
+- `ExecuteDeleteAsync` — bezpośredni DELETE bez ładowania encji do pamięci
+
+---
+
 # Implementacja — feat/alarms (Alarm System Vertical Slice)
 
 Data: 2026-07-01
