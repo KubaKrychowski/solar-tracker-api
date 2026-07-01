@@ -34,7 +34,7 @@ Migracja: **InitialCreate** — wygenerowana pomyślnie (`src/SolarTracker.Api/M
 ## Endpointy
 - `GET /api/telemetry/latest` — ostatni snapshot z bazy
 - `GET /api/telemetry/history?from=&to=&interval=` — historia (domyślnie ostatnie 24h), opcjonalny downsampling co interval minut, limit 1000
-- `WS /hubs/telemetry` — SignalR, emituje `TelemetryUpdate` co 10 sekund
+- `WS /hubs/telemetry` — SignalR, emituje `TelemetryUpdate` co 1 minutę
 
 ## Uwagi
 - EF tools 9.0.1 vs runtime 9.0.6 — ostrzeżenie, migracja wygenerowana poprawnie
