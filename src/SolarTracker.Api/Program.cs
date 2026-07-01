@@ -26,10 +26,26 @@ builder.Services.AddDbContext<SolarTrackerDbContext>(options =>
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<TelemetrySaveService>();
+builder.Services.AddHostedService<RetentionCleanupService>();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+builder.Services.AddHealthChecks()
+    .AddNpgSql(connectionString);
+
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:4200"];
+
+builder.Services.AddCors();
 
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok("healthy"));
+app.UseCors(policy => policy
+    .WithOrigins(allowedOrigins)
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials());
+
+app.MapHealthChecks("/health");
 app.MapHub<TrackerHub>(Routes.TrackerHub);
 app.MapHub<TelemetryHub>(Routes.TelemetryHub);
 app.MapHub<AlarmHub>(Routes.AlarmsHub);
