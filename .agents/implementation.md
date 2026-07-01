@@ -1,3 +1,37 @@
+# Implementacja — feat/tracker-endpoints
+
+Data: 2026-07-01
+
+## Status
+`dotnet build SolarTracker.sln` → **Build succeeded, 0 Warning(s), 0 Error(s)**
+
+## Nowe pliki (SolarTracker.Api)
+
+| Plik | Opis |
+|------|------|
+| `Features/Tracker/TrackerStateService.cs` | Singleton, in-memory cache stanu trackera, thread-safe (lock) |
+| `Features/Tracker/TrackerHub.cs` | SignalR Hub — klienci łączą na `/hubs/tracker` |
+| `Features/Tracker/MqttService.cs` | BackgroundService + IMqttClient; subscribe `solar-tracker/telemetry/#`; reconnect z exponential backoff 1s→30s; publiczny `PublishAsync<T>` do wysyłania komend |
+| `Features/Tracker/GetStatus.cs` | `GET /api/tracker/status` → 200 z `TrackerStatus` lub 404 |
+| `Features/Tracker/SendCommand.cs` | `POST /api/tracker/command/move` i `POST /api/tracker/command/mode` → publish MQTT, 202 Accepted |
+
+## Zmodyfikowane pliki
+
+| Plik | Zmiana |
+|------|--------|
+| `Program.cs` | AddSignalR, AddSingleton TrackerStateService+MqttService, AddHostedService, MapHub, MapGroup /api/tracker, JSON camelCase+EnumConverter |
+| `appsettings.json` | Dodano sekcję MQTT (Host: localhost, Port: 1883) |
+| `SolarTracker.Api.csproj` | Dodano `MQTTnet 4.1.4.563` |
+
+## Kluczowe decyzje
+
+- `MqttService` zarejestrowany jako `Singleton` + `HostedService` — ten sam obiekt dostępny przez DI do `SendCommand.HandleMove/HandleMode` (brak osobnego CommandPublisher)
+- SignalR push po każdym MQTT update przez `IHubContext<TrackerHub>` (fire-and-forget)
+- Reconnect logic identyczna z MockController (exponential backoff)
+- Modele wyłącznie z `SolarTracker.Shared`
+
+---
+
 # Implementacja poprawek code review — feat/mock-controller
 
 Data: 2026-06-30
