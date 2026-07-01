@@ -16,8 +16,8 @@ public class MqttService(
     ILogger<MqttService> logger) : BackgroundService
 {
     private readonly IMqttClient _client = new MqttFactory().CreateMqttClient();
-    private string _host = "localhost";
-    private int _port = 1883;
+    private readonly string _host = configuration["MQTT:Host"] ?? "localhost";
+    private readonly int _port = int.TryParse(configuration["MQTT:Port"], out var p) ? p : 1883;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -27,8 +27,6 @@ public class MqttService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _host = configuration["MQTT:Host"] ?? "localhost";
-        _port = int.TryParse(configuration["MQTT:Port"], out var p) ? p : 1883;
 
         _client.ApplicationMessageReceivedAsync += OnMessageReceived;
         _client.DisconnectedAsync += async args => await OnDisconnected(args, stoppingToken);
