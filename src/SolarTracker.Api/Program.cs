@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using SolarTracker.Api;
 using SolarTracker.Api.Data;
+using SolarTracker.Api.Features.Power;
 using SolarTracker.Api.Features.Telemetry;
 using SolarTracker.Api.Features.Tracker;
 
@@ -37,5 +38,9 @@ SendCommand.Map(tracker);
 var telemetry = app.MapGroup(Routes.Telemetry);
 GetLatest.Map(telemetry);
 GetHistory.Map(telemetry);
+
+var power = app.MapGroup(Routes.Power);
+GetPowerStatus.Map(power);
+GetPowerHistory.Map(power);
 
 app.Run();
