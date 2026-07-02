@@ -15,7 +15,12 @@ builder.Services.ConfigureHttpJsonOptions(opts =>
     opts.SerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase));
 });
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(opts =>
+    {
+        opts.PayloadSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        opts.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase));
+    });
 builder.Services.AddSingleton<TrackerStateService>();
 builder.Services.AddSingleton<AlarmStateService>();
 builder.Services.AddSingleton<MqttService>();
